@@ -181,6 +181,24 @@ table tbody tr:hover {
     margin: 0;
 }
 
+.dish-name-clickable {
+    color: #667eea;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+.dish-name-clickable:hover {
+    color: #5568d3;
+    font-weight: bold;
+}
+
+.inventory-controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+}
+
 .dish-controls {
     margin-bottom: 15px;
 }

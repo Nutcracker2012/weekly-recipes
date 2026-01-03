@@ -3,7 +3,7 @@ import csv
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 
 # Add src directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -143,7 +143,27 @@ class RecipePlanner:
         
         # Plan for 7 days
         plan_lines = []
-        used_dishes = {}  # Track usage count instead of just used/not used
+        used_dishes = {}  # Track usage count: dish_name -> count
+        MAX_REPEATS = 2  # Maximum times a dish can appear in a week
+        
+        def can_use_dish(dish_name: str) -> bool:
+            """Check if a dish can still be used (hasn't exceeded max repeats)."""
+            return used_dishes.get(dish_name, 0) < MAX_REPEATS
+        
+        def get_best_unused_dish(dish_list: List) -> Optional[tuple]:
+            """Get the best unused dish from a list."""
+            for dish, score in dish_list:
+                dish_name = dish.get("name")
+                if can_use_dish(dish_name):
+                    return (dish, score)
+            return None
+        
+        def get_best_reusable_dish(dish_list: List) -> Optional[tuple]:
+            """Get the dish with lowest usage count (for reuse)."""
+            available = [(d, s) for d, s in dish_list if used_dishes.get(d.get("name"), 0) < MAX_REPEATS]
+            if not available:
+                return None
+            return min(available, key=lambda x: used_dishes.get(x[0].get("name"), 0))
         
         for day_offset in range(7):
             day_index = (start_day + day_offset) % 7
@@ -155,49 +175,53 @@ class RecipePlanner:
             
             # Ensure at least one vegetable dish
             veg_added = False
-            # Try unused dishes first
-            for dish, score in vegetable_dishes:
+            best_veg = get_best_unused_dish(vegetable_dishes)
+            if best_veg:
+                dish, score = best_veg
                 dish_name = dish.get("name")
-                if dish_name not in used_dishes:
-                    day_dishes.append(dish_name)
-                    used_dishes[dish_name] = 1
-                    veg_added = True
-                    break
-            
-            # If no unused vegetable dish, reuse one with lowest usage
-            if not veg_added and vegetable_dishes:
-                best_dish = min(vegetable_dishes, key=lambda x: used_dishes.get(x[0].get("name"), 0))
-                dish_name = best_dish[0].get("name")
                 day_dishes.append(dish_name)
                 used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
                 veg_added = True
+            else:
+                # Try to reuse if no unused available
+                best_veg = get_best_reusable_dish(vegetable_dishes)
+                if best_veg:
+                    dish, score = best_veg
+                    dish_name = dish.get("name")
+                    day_dishes.append(dish_name)
+                    used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
+                    veg_added = True
             
             # Ensure at least one meat/seafood dish
             meat_added = False
-            # Try unused dishes first
-            for dish, score in meat_dishes:
+            best_meat = get_best_unused_dish(meat_dishes)
+            if best_meat:
+                dish, score = best_meat
                 dish_name = dish.get("name")
-                if dish_name not in used_dishes:
-                    day_dishes.append(dish_name)
-                    used_dishes[dish_name] = 1
-                    meat_added = True
-                    break
-            
-            # If no unused meat dish, reuse one with lowest usage
-            if not meat_added and meat_dishes:
-                best_dish = min(meat_dishes, key=lambda x: used_dishes.get(x[0].get("name"), 0))
-                dish_name = best_dish[0].get("name")
                 day_dishes.append(dish_name)
                 used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
                 meat_added = True
+            else:
+                # Try to reuse if no unused available
+                best_meat = get_best_reusable_dish(meat_dishes)
+                if best_meat:
+                    dish, score = best_meat
+                    dish_name = dish.get("name")
+                    day_dishes.append(dish_name)
+                    used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
+                    meat_added = True
             
-            # Add more dishes if available (prioritize high scores, allow reuse)
-            remaining_dishes = [(d, s) for d, s in feasible_dishes 
-                               if d.get("name") not in day_dishes]
+            # Add more dishes if available (prioritize unused dishes)
+            # Try to add 1-2 more dishes per day, but only if we have unused dishes
+            remaining_unused = [(d, s) for d, s in feasible_dishes 
+                               if d.get("name") not in day_dishes and can_use_dish(d.get("name"))]
             
-            # Add 1-2 more dishes per day
+            # Sort by score descending
+            remaining_unused.sort(key=lambda x: x[1], reverse=True)
+            
+            # Add 1-2 additional dishes (prefer unused)
             added_count = 0
-            for dish, score in remaining_dishes:
+            for dish, score in remaining_unused:
                 if added_count >= 2:  # Limit to 2 additional dishes
                     break
                 dish_name = dish.get("name")
@@ -205,17 +229,20 @@ class RecipePlanner:
                 used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
                 added_count += 1
             
-            # If still not enough dishes, reuse from all feasible dishes
+            # Only reuse if we have very few dishes and need to fill the day
+            # But limit reuse to maintain variety
             if len(day_dishes) < 2:
-                for dish, score in feasible_dishes:
-                    if len(day_dishes) >= 4:  # Max 4 dishes per day
-                        break
+                # Try to add one more dish from any category if available
+                all_available = [(d, s) for d, s in feasible_dishes 
+                               if d.get("name") not in day_dishes and can_use_dish(d.get("name"))]
+                if all_available:
+                    all_available.sort(key=lambda x: x[1], reverse=True)
+                    dish, score = all_available[0]
                     dish_name = dish.get("name")
-                    if dish_name not in day_dishes:
-                        day_dishes.append(dish_name)
-                        used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
+                    day_dishes.append(dish_name)
+                    used_dishes[dish_name] = used_dishes.get(dish_name, 0) + 1
             
-            # Add dish names to plan (always add day name, even if no dishes)
+            # Add dish names to plan
             for dish_name in day_dishes:
                 plan_lines.append(dish_name)
             

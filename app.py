@@ -9,12 +9,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from inventory_parser import parse_weee_text
 from dish_manager import DishManager
 from recipe_planner import RecipePlanner
+from inventory_manager import InventoryManager
 
 app = Flask(__name__)
 
 # Initialize managers
 dish_manager = DishManager("data/dishes.json")
 recipe_planner = RecipePlanner("data/dishes.json", "data/past_meals.csv")
+inventory_manager = InventoryManager("data/inventory.json")
 
 
 @app.route('/')
@@ -25,15 +27,22 @@ def index():
 
 @app.route('/api/parse-inventory', methods=['POST'])
 def parse_inventory():
-    """Parse Weee purchase text into structured inventory."""
+    """Parse Weee purchase text into structured inventory and save to inventory."""
     try:
         data = request.get_json()
         weee_text = data.get('text', '')
+        save_to_inventory = data.get('save', True)  # Default to saving
         
         if not weee_text:
             return jsonify({"error": "No text provided"}), 400
         
         inventory = parse_weee_text(weee_text)
+        
+        # Save to inventory if requested
+        if save_to_inventory:
+            for item in inventory:
+                inventory_manager.add_item(item)
+        
         return jsonify({"inventory": inventory}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -41,14 +50,16 @@ def parse_inventory():
 
 @app.route('/api/generate-plan', methods=['POST'])
 def generate_plan():
-    """Generate meal plan based on inventory."""
+    """Generate meal plan based on current inventory."""
     try:
         data = request.get_json()
-        inventory_items = data.get('inventory_items', [])
         start_day = data.get('start_day', 0)  # 0 = Sunday
         
+        # Get current inventory from storage
+        inventory_items = inventory_manager.get_all_items()
+        
         if not inventory_items:
-            return jsonify({"error": "No inventory items provided"}), 400
+            return jsonify({"error": "No inventory items available. Please add inventory first."}), 400
         
         # Extract item names from inventory list
         item_names = [item.get('item', '') for item in inventory_items if item.get('item')]
@@ -116,17 +127,38 @@ def delete_dish(dish_id):
 
 @app.route('/api/past-meals', methods=['POST'])
 def record_meal():
-    """Record a meal prep."""
+    """Record a meal prep and consume ingredients."""
     try:
         data = request.get_json()
         date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
         dish_name = data.get('dish_name', '')
+        consume_ingredients = data.get('consume_ingredients', True)  # Default to consuming
         
         if not dish_name:
             return jsonify({"error": "Dish name required"}), 400
         
+        # Record the meal
         recipe_planner.record_meal(date, dish_name)
-        return jsonify({"message": "Meal recorded successfully"}), 201
+        
+        # Consume ingredients if requested
+        consumption_results = {}
+        if consume_ingredients:
+            # Find the dish to get its ingredients
+            dishes = dish_manager.get_all_dishes()
+            dish = None
+            for d in dishes:
+                if d.get("name") == dish_name:
+                    dish = d
+                    break
+            
+            if dish:
+                ingredients = dish.get("ingredients", [])
+                consumption_results = inventory_manager.consume_ingredients(ingredients, amount=1.0)
+        
+        return jsonify({
+            "message": "Meal recorded successfully",
+            "ingredients_consumed": consumption_results
+        }), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -145,6 +177,61 @@ def get_past_meals():
                 past_meals = list(reader)
         
         return jsonify({"past_meals": past_meals}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Inventory Management API
+@app.route('/api/inventory', methods=['GET'])
+def get_inventory():
+    """Get all inventory items."""
+    try:
+        inventory = inventory_manager.get_all_items()
+        return jsonify({"inventory": inventory}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/inventory', methods=['POST'])
+def add_inventory_item():
+    """Add or update an inventory item."""
+    try:
+        data = request.get_json()
+        success, error, item = inventory_manager.add_item(data)
+        
+        if success:
+            return jsonify({"item": item}), 201
+        else:
+            return jsonify({"error": error}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/inventory/<item_name>', methods=['PUT'])
+def update_inventory_item(item_name):
+    """Update an inventory item."""
+    try:
+        data = request.get_json()
+        success, error, item = inventory_manager.update_item(item_name, data)
+        
+        if success:
+            return jsonify({"item": item}), 200
+        else:
+            return jsonify({"error": error}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/inventory/<item_name>', methods=['DELETE'])
+def delete_inventory_item(item_name):
+    """Delete an inventory item."""
+    try:
+        success, error = inventory_manager.delete_item(item_name)
+        
+        if success:
+            return jsonify({"message": "Item deleted successfully"}), 200
+        else:
+            return jsonify({"error": error}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

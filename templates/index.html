@@ -23,9 +23,33 @@
                 <button id="parse-btn" class="btn btn-primary">解析库存</button>
             </section>
 
+            <!-- Current Inventory Section -->
+            <section class="card" id="current-inventory-section">
+                <h2>当前库存管理</h2>
+                <div class="inventory-controls">
+                    <button id="add-inventory-btn" class="btn btn-secondary">手动添加库存</button>
+                    <button id="load-inventory-btn" class="btn btn-secondary">加载当前库存</button>
+                </div>
+                <div class="table-container">
+                    <table id="current-inventory-table">
+                        <thead>
+                            <tr>
+                                <th>食材名称</th>
+                                <th>数量</th>
+                                <th>单位</th>
+                                <th>类别</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="current-inventory-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- Parsed Inventory Section -->
             <section class="card" id="inventory-section" style="display: none;">
-                <h2>解析后的库存</h2>
+                <h2>解析后的库存（将添加到当前库存）</h2>
                 <div class="table-container">
                     <table id="inventory-table">
                         <thead>
@@ -57,9 +81,13 @@
                         <option value="5">周五</option>
                         <option value="6">周六</option>
                     </select>
+                    <button id="regenerate-plan-btn" class="btn btn-primary" style="margin-left: 10px;">重新生成餐单</button>
                 </div>
                 <div class="meal-plan-output">
                     <pre id="meal-plan-text"></pre>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>提示：</strong>点击菜品名称可标记为"已做"，系统会自动减少相应配料的库存。</p>
                 </div>
             </section>
 
@@ -134,6 +162,46 @@
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">保存</button>
                     <button type="button" class="btn btn-secondary" id="cancel-btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Inventory Modal -->
+    <div id="inventory-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-inventory">&times;</span>
+            <h2 id="inventory-modal-title">添加库存</h2>
+            <form id="inventory-form">
+                <input type="hidden" id="inventory-item-name-original">
+                <div class="form-group">
+                    <label for="inventory-item-name">食材名称：</label>
+                    <input type="text" id="inventory-item-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="inventory-quantity">数量：</label>
+                    <input type="number" id="inventory-quantity" step="0.1" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="inventory-unit">单位：</label>
+                    <input type="text" id="inventory-unit" placeholder="磅, 克, 个, 把" required>
+                </div>
+                <div class="form-group">
+                    <label for="inventory-category">类别：</label>
+                    <select id="inventory-category">
+                        <option value="肉类">肉类</option>
+                        <option value="海鲜">海鲜</option>
+                        <option value="蔬菜">蔬菜</option>
+                        <option value="豆制品">豆制品</option>
+                        <option value="蛋类">蛋类</option>
+                        <option value="主食">主食</option>
+                        <option value="调料">调料</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-inventory-btn">取消</button>
                 </div>
             </form>
         </div>
