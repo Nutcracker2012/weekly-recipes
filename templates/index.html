@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每周食谱计划</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>每周食谱计划</h1>
+        </header>
+
+        <main>
+            <!-- Inventory Input Section -->
+            <section class="card">
+                <h2>库存输入</h2>
+                <div class="form-group">
+                    <label for="weee-text">粘贴 Weee 购买文本：</label>
+                    <textarea id="weee-text" rows="6" placeholder="weee_牧民人家 奶疙瘩 原味 400 克&#10;单价: $5.79 |数量: 1&#10;..."></textarea>
+                </div>
+                <button id="parse-btn" class="btn btn-primary">解析库存</button>
+            </section>
+
+            <!-- Parsed Inventory Section -->
+            <section class="card" id="inventory-section" style="display: none;">
+                <h2>解析后的库存</h2>
+                <div class="table-container">
+                    <table id="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>食材名称</th>
+                                <th>数量</th>
+                                <th>单位</th>
+                                <th>类别</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                <button id="generate-plan-btn" class="btn btn-primary" style="display: none;">生成餐单</button>
+            </section>
+
+            <!-- Meal Plan Section -->
+            <section class="card" id="meal-plan-section" style="display: none;">
+                <h2>每周餐单</h2>
+                <div class="form-group">
+                    <label for="start-day">起始日期：</label>
+                    <select id="start-day">
+                        <option value="0">周日</option>
+                        <option value="1">周一</option>
+                        <option value="2">周二</option>
+                        <option value="3">周三</option>
+                        <option value="4">周四</option>
+                        <option value="5">周五</option>
+                        <option value="6">周六</option>
+                    </select>
+                </div>
+                <div class="meal-plan-output">
+                    <pre id="meal-plan-text"></pre>
+                </div>
+            </section>
+
+            <!-- Dish Library Section -->
+            <section class="card">
+                <h2>菜品库</h2>
+                <div class="dish-controls">
+                    <button id="add-dish-btn" class="btn btn-secondary">添加菜品</button>
+                </div>
+                <div class="table-container">
+                    <table id="dishes-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>类别</th>
+                                <th>食材</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dishes-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Past Meals Section -->
+            <section class="card">
+                <h2>最近餐单记录</h2>
+                <div class="table-container">
+                    <table id="past-meals-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>菜品</th>
+                            </tr>
+                        </thead>
+                        <tbody id="past-meals-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add/Edit Dish Modal -->
+    <div id="dish-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">添加菜品</h2>
+            <form id="dish-form">
+                <input type="hidden" id="dish-id">
+                <div class="form-group">
+                    <label for="dish-name">菜品名称：</label>
+                    <input type="text" id="dish-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="dish-category">类别：</label>
+                    <select id="dish-category" required>
+                        <option value="肉类">肉类</option>
+                        <option value="海鲜">海鲜</option>
+                        <option value="蔬菜">蔬菜</option>
+                        <option value="豆类">豆类</option>
+                        <option value="蛋类">蛋类</option>
+                        <option value="主食">主食</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="dish-ingredients">食材（用逗号分隔）：</label>
+                    <input type="text" id="dish-ingredients" placeholder="鸡肉, 花生" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
