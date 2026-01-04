@@ -4,10 +4,6 @@ let currentDishes = [];
 let currentMealPlan = '';
 
 // DOM Elements
-const weeeTextArea = document.getElementById('weee-text');
-const parseBtn = document.getElementById('parse-btn');
-const inventorySection = document.getElementById('inventory-section');
-const inventoryTbody = document.getElementById('inventory-tbody');
 const generatePlanBtn = document.getElementById('generate-plan-btn');
 const regeneratePlanBtn = document.getElementById('regenerate-plan-btn');
 const mealPlanSection = document.getElementById('meal-plan-section');
@@ -31,11 +27,25 @@ const inventoryForm = document.getElementById('inventory-form');
 const closeInventoryModal = document.querySelector('.close-inventory');
 const cancelInventoryBtn = document.getElementById('cancel-inventory-btn');
 
+// Weee import modal elements
+const pasteWeeeBtn = document.getElementById('paste-weee-btn');
+const weeeModal = document.getElementById('weee-modal');
+const weeeTextArea = document.getElementById('weee-text');
+const weeeParseBtn = document.getElementById('weee-parse-btn');
+const weeeCancelBtn = document.getElementById('weee-cancel-btn');
+const weeeCancelStep2Btn = document.getElementById('weee-cancel-step2-btn');
+const weeeBackBtn = document.getElementById('weee-back-btn');
+const weeeConfirmBtn = document.getElementById('weee-confirm-btn');
+const weeePreviewTbody = document.getElementById('weee-preview-tbody');
+const closeWeeeModal = document.querySelector('.close-weee');
+let previewInventory = []; // Store parsed inventory for preview
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDishes();
     loadPastMeals();
     loadCurrentInventory();
+    initTabs();
 });
 
 // Load current inventory
@@ -211,54 +221,6 @@ async function deleteInventoryItem(itemName) {
     }
 }
 
-// Parse inventory
-parseBtn.addEventListener('click', async () => {
-    const text = weeeTextArea.value.trim();
-    if (!text) {
-        alert('请输入 Weee 购买文本');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/parse-inventory', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text, save: true }),
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            currentInventory = data.inventory;
-            displayInventory(data.inventory);
-            inventorySection.style.display = 'block';
-            generatePlanBtn.style.display = 'block';
-            // Reload current inventory to show updated list
-            loadCurrentInventory();
-        } else {
-            alert('解析失败: ' + data.error);
-        }
-    } catch (error) {
-        alert('错误: ' + error.message);
-    }
-});
-
-// Display inventory (parsed)
-function displayInventory(inventory) {
-    inventoryTbody.innerHTML = '';
-    inventory.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${item.item || ''}</td>
-            <td>${item.quantity || ''}</td>
-            <td>${item.unit || ''}</td>
-            <td>${item.category || '其他'}</td>
-        `;
-        inventoryTbody.appendChild(row);
-    });
-}
-
 // Generate meal plan
 generatePlanBtn.addEventListener('click', async () => {
     await generateMealPlan();
@@ -285,8 +247,12 @@ async function generateMealPlan() {
         if (response.ok) {
             currentMealPlan = data.meal_plan;
             displayMealPlan(data.meal_plan);
-            mealPlanSection.style.display = 'block';
-            mealPlanSection.scrollIntoView({ behavior: 'smooth' });
+            // Show meal plan output and hint
+            document.getElementById('meal-plan-output').style.display = 'block';
+            document.getElementById('meal-plan-hint').style.display = 'block';
+            regeneratePlanBtn.style.display = 'inline-block';
+            // Switch to meal plan tab
+            switchToTab('meal-plan');
         } else {
             alert('生成失败: ' + data.error);
         }
@@ -530,3 +496,244 @@ function displayPastMeals(meals) {
         pastMealsTbody.appendChild(row);
     });
 }
+
+// Tab switching functionality
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            switchToTab(targetTab);
+        });
+    });
+}
+
+function switchToTab(tabName) {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    // Remove active class from all buttons and contents
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+
+    // Add active class to target button and content
+    const targetButton = document.querySelector(`[data-tab="${tabName}"]`);
+    const targetContent = document.getElementById(`${tabName}-tab`);
+    
+    if (targetButton && targetContent) {
+        targetButton.classList.add('active');
+        targetContent.classList.add('active');
+    }
+}
+
+// Open Weee import modal
+pasteWeeeBtn.addEventListener('click', () => {
+    openWeeeModal();
+});
+
+function openWeeeModal() {
+    weeeModal.style.display = 'block';
+    showWeeeStep(1);
+    weeeTextArea.value = '';
+    previewInventory = [];
+}
+
+// Close Weee modal
+function closeWeeeModalFunc() {
+    weeeModal.style.display = 'none';
+    showWeeeStep(1);
+    weeeTextArea.value = '';
+    previewInventory = [];
+}
+
+closeWeeeModal.addEventListener('click', () => {
+    closeWeeeModalFunc();
+});
+
+weeeCancelBtn.addEventListener('click', () => {
+    closeWeeeModalFunc();
+});
+
+weeeCancelStep2Btn.addEventListener('click', () => {
+    closeWeeeModalFunc();
+});
+
+window.addEventListener('click', (event) => {
+    if (event.target === weeeModal) {
+        closeWeeeModalFunc();
+    }
+});
+
+// Show specific step in Weee modal
+function showWeeeStep(stepNumber) {
+    // Hide all steps
+    document.getElementById('weee-step-1').classList.remove('active');
+    document.getElementById('weee-step-2').classList.remove('active');
+    document.getElementById('weee-step-1').style.display = 'none';
+    document.getElementById('weee-step-2').style.display = 'none';
+    
+    // Update step indicators
+    document.querySelectorAll('.step').forEach((step, index) => {
+        const stepNum = index + 1;
+        step.classList.remove('active', 'completed');
+        if (stepNum < stepNumber) {
+            step.classList.add('completed');
+        } else if (stepNum === stepNumber) {
+            step.classList.add('active');
+        }
+    });
+    
+    // Show target step
+    if (stepNumber === 1) {
+        document.getElementById('weee-step-1').classList.add('active');
+        document.getElementById('weee-step-1').style.display = 'block';
+    } else if (stepNumber === 2) {
+        document.getElementById('weee-step-2').classList.add('active');
+        document.getElementById('weee-step-2').style.display = 'block';
+    }
+}
+
+// Parse Weee text (Step 1)
+weeeParseBtn.addEventListener('click', async () => {
+    const text = weeeTextArea.value.trim();
+    if (!text) {
+        alert('请输入 Weee 购买文本');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/parse-inventory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text, save: false }), // Don't save yet, just parse
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            previewInventory = data.inventory;
+            if (previewInventory.length === 0) {
+                alert('未能解析出任何库存项目，请检查文本格式');
+                return;
+            }
+            displayPreviewInventory(previewInventory);
+            showWeeeStep(2);
+        } else {
+            alert('解析失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+});
+
+// Display preview inventory (Step 2)
+function displayPreviewInventory(inventory) {
+    weeePreviewTbody.innerHTML = '';
+    if (inventory.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="5" style="text-align: center; color: #999;">暂无库存项目</td>';
+        weeePreviewTbody.appendChild(row);
+        return;
+    }
+
+    inventory.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" value="${item.item || ''}" data-field="item" data-index="${index}"></td>
+            <td><input type="number" value="${item.quantity || 0}" step="0.1" min="0" data-field="quantity" data-index="${index}"></td>
+            <td><input type="text" value="${item.unit || ''}" data-field="unit" data-index="${index}"></td>
+            <td>
+                <select data-field="category" data-index="${index}">
+                    <option value="肉类" ${item.category === '肉类' ? 'selected' : ''}>肉类</option>
+                    <option value="海鲜" ${item.category === '海鲜' ? 'selected' : ''}>海鲜</option>
+                    <option value="蔬菜" ${item.category === '蔬菜' ? 'selected' : ''}>蔬菜</option>
+                    <option value="豆制品" ${item.category === '豆制品' ? 'selected' : ''}>豆制品</option>
+                    <option value="蛋类" ${item.category === '蛋类' ? 'selected' : ''}>蛋类</option>
+                    <option value="主食" ${item.category === '主食' ? 'selected' : ''}>主食</option>
+                    <option value="调料" ${item.category === '调料' ? 'selected' : ''}>调料</option>
+                    <option value="其他" ${item.category === '其他' || !item.category ? 'selected' : ''}>其他</option>
+                </select>
+            </td>
+            <td>
+                <button class="btn btn-danger" onclick="removePreviewItem(${index})">删除</button>
+            </td>
+        `;
+        weeePreviewTbody.appendChild(row);
+    });
+
+    // Add event listeners for input changes
+    weeePreviewTbody.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const index = parseInt(e.target.getAttribute('data-index'));
+            const field = e.target.getAttribute('data-field');
+            if (previewInventory[index]) {
+                if (field === 'quantity') {
+                    previewInventory[index][field] = parseFloat(e.target.value) || 0;
+                } else {
+                    previewInventory[index][field] = e.target.value.trim();
+                }
+            }
+        });
+    });
+}
+
+// Remove item from preview
+function removePreviewItem(index) {
+    if (confirm('确定要删除这个项目吗？')) {
+        previewInventory.splice(index, 1);
+        displayPreviewInventory(previewInventory);
+    }
+}
+
+// Back to step 1
+weeeBackBtn.addEventListener('click', () => {
+    showWeeeStep(1);
+});
+
+// Confirm and add to inventory (Step 2)
+weeeConfirmBtn.addEventListener('click', async () => {
+    if (previewInventory.length === 0) {
+        alert('没有可添加的库存项目');
+        return;
+    }
+
+    try {
+        // Add each item to inventory
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const item of previewInventory) {
+            try {
+                const response = await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(item),
+                });
+                
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (error) {
+                errorCount++;
+            }
+        }
+
+        if (successCount > 0) {
+            alert(`成功添加 ${successCount} 个库存项目${errorCount > 0 ? `，${errorCount} 个项目添加失败` : ''}`);
+            closeWeeeModalFunc();
+            loadCurrentInventory();
+            switchToTab('inventory');
+        } else {
+            alert('添加失败，请重试');
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+});

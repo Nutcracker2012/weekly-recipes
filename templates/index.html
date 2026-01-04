@@ -13,104 +13,82 @@
         </header>
 
         <main>
-            <!-- Inventory Input Section -->
-            <section class="card">
-                <h2>库存输入</h2>
-                <div class="form-group">
-                    <label for="weee-text">粘贴 Weee 购买文本：</label>
-                    <textarea id="weee-text" rows="6" placeholder="weee_牧民人家 奶疙瘩 原味 400 克&#10;单价: $5.79 |数量: 1&#10;..."></textarea>
+            <!-- Tabs Section -->
+            <section class="card tabs-container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="meal-plan">每周餐单</button>
+                    <button class="tab-btn" data-tab="inventory">当前库存管理</button>
+                    <button class="tab-btn" data-tab="dishes">菜品库</button>
                 </div>
-                <button id="parse-btn" class="btn btn-primary">解析库存</button>
-            </section>
 
-            <!-- Current Inventory Section -->
-            <section class="card" id="current-inventory-section">
-                <h2>当前库存管理</h2>
-                <div class="inventory-controls">
-                    <button id="add-inventory-btn" class="btn btn-secondary">手动添加库存</button>
-                    <button id="load-inventory-btn" class="btn btn-secondary">加载当前库存</button>
+                <!-- Tab Content: Meal Plan -->
+                <div id="meal-plan-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="start-day">起始日期：</label>
+                        <select id="start-day">
+                            <option value="0">周日</option>
+                            <option value="1">周一</option>
+                            <option value="2">周二</option>
+                            <option value="3">周三</option>
+                            <option value="4">周四</option>
+                            <option value="5">周五</option>
+                            <option value="6">周六</option>
+                        </select>
+                        <button id="generate-plan-btn" class="btn btn-primary" style="margin-left: 10px;">生成餐单</button>
+                        <button id="regenerate-plan-btn" class="btn btn-primary" style="margin-left: 10px; display: none;">重新生成餐单</button>
+                    </div>
+                    <div class="meal-plan-output" id="meal-plan-output" style="display: none;">
+                        <pre id="meal-plan-text"></pre>
+                    </div>
+                    <div id="meal-plan-hint" style="margin-top: 15px; display: none;">
+                        <p><strong>提示：</strong>点击菜品名称可标记为"已做"，系统会自动减少相应配料的库存。</p>
+                    </div>
                 </div>
-                <div class="table-container">
-                    <table id="current-inventory-table">
-                        <thead>
-                            <tr>
-                                <th>食材名称</th>
-                                <th>数量</th>
-                                <th>单位</th>
-                                <th>类别</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="current-inventory-tbody">
-                        </tbody>
-                    </table>
-                </div>
-            </section>
 
-            <!-- Parsed Inventory Section -->
-            <section class="card" id="inventory-section" style="display: none;">
-                <h2>解析后的库存（将添加到当前库存）</h2>
-                <div class="table-container">
-                    <table id="inventory-table">
-                        <thead>
-                            <tr>
-                                <th>食材名称</th>
-                                <th>数量</th>
-                                <th>单位</th>
-                                <th>类别</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventory-tbody">
-                        </tbody>
-                    </table>
+                <!-- Tab Content: Inventory Management -->
+                <div id="inventory-tab" class="tab-content">
+                    <div class="inventory-controls">
+                        <button id="add-inventory-btn" class="btn btn-secondary">手动添加库存</button>
+                        <button id="paste-weee-btn" class="btn btn-secondary">粘贴 Weee 购买文本：</button>
+                        <button id="load-inventory-btn" class="btn btn-secondary">刷新库存</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="current-inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>食材名称</th>
+                                    <th>数量</th>
+                                    <th>单位</th>
+                                    <th>类别</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="current-inventory-tbody">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <button id="generate-plan-btn" class="btn btn-primary" style="display: none;">生成餐单</button>
-            </section>
 
-            <!-- Meal Plan Section -->
-            <section class="card" id="meal-plan-section" style="display: none;">
-                <h2>每周餐单</h2>
-                <div class="form-group">
-                    <label for="start-day">起始日期：</label>
-                    <select id="start-day">
-                        <option value="0">周日</option>
-                        <option value="1">周一</option>
-                        <option value="2">周二</option>
-                        <option value="3">周三</option>
-                        <option value="4">周四</option>
-                        <option value="5">周五</option>
-                        <option value="6">周六</option>
-                    </select>
-                    <button id="regenerate-plan-btn" class="btn btn-primary" style="margin-left: 10px;">重新生成餐单</button>
-                </div>
-                <div class="meal-plan-output">
-                    <pre id="meal-plan-text"></pre>
-                </div>
-                <div style="margin-top: 15px;">
-                    <p><strong>提示：</strong>点击菜品名称可标记为"已做"，系统会自动减少相应配料的库存。</p>
-                </div>
-            </section>
-
-            <!-- Dish Library Section -->
-            <section class="card">
-                <h2>菜品库</h2>
-                <div class="dish-controls">
-                    <button id="add-dish-btn" class="btn btn-secondary">添加菜品</button>
-                </div>
-                <div class="table-container">
-                    <table id="dishes-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>名称</th>
-                                <th>类别</th>
-                                <th>食材</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dishes-tbody">
-                        </tbody>
-                    </table>
+                <!-- Tab Content: Dish Library -->
+                <div id="dishes-tab" class="tab-content">
+                    <div class="dish-controls">
+                        <button id="add-dish-btn" class="btn btn-secondary">添加菜品</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="dishes-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>类别</th>
+                                    <th>食材</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dishes-tbody">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -207,7 +185,63 @@
         </div>
     </div>
 
+    <!-- Weee Import Modal -->
+    <div id="weee-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <span class="close-weee">&times;</span>
+            <h2>导入 Weee 购买记录</h2>
+            
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">粘贴文本</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">预览确认</div>
+                </div>
+            </div>
+
+            <!-- Step 1: Paste Text -->
+            <div id="weee-step-1" class="weee-step active">
+                <div class="form-group">
+                    <label for="weee-text">粘贴 Weee 购买文本：</label>
+                    <textarea id="weee-text" rows="8" placeholder="weee_牧民人家 奶疙瘩 原味 400 克&#10;单价: $5.79 |数量: 1&#10;..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" id="weee-parse-btn">解析库存</button>
+                    <button type="button" class="btn btn-secondary" id="weee-cancel-btn">取消</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Preview and Edit -->
+            <div id="weee-step-2" class="weee-step" style="display: none;">
+                <p class="preview-hint">请检查并修改以下库存项目，确认无误后点击"确认添加"：</p>
+                <div class="table-container">
+                    <table id="weee-preview-table">
+                        <thead>
+                            <tr>
+                                <th>食材名称</th>
+                                <th>数量</th>
+                                <th>单位</th>
+                                <th>类别</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weee-preview-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" id="weee-confirm-btn">确认添加</button>
+                    <button type="button" class="btn btn-secondary" id="weee-back-btn">返回</button>
+                    <button type="button" class="btn btn-secondary" id="weee-cancel-step2-btn">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
-
