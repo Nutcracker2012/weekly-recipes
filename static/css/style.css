@@ -467,3 +467,120 @@ table tbody tr:hover {
     color: #000;
 }
 
+/* Meal Plan Editing Styles */
+.meal-plan-controls {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    gap: 10px;
+}
+
+#meal-plan-name {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#meal-plan-display {
+    line-height: 2;
+}
+
+.meal-day {
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.meal-day-header {
+    font-weight: 600;
+    font-size: 16px;
+    color: #667eea;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.meal-dish {
+    padding: 8px 12px;
+    margin: 5px 0;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s ease;
+}
+
+.meal-dish:hover {
+    background-color: #e9ecef;
+}
+
+.meal-dish-name {
+    flex: 1;
+    cursor: pointer;
+    color: #667eea;
+}
+
+.meal-dish-name:hover {
+    text-decoration: underline;
+}
+
+.meal-dish-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+}
+
+.meal-dish-actions {
+    display: none;
+    gap: 5px;
+}
+
+.editing-mode .meal-dish-actions {
+    display: flex;
+}
+
+.btn-small {
+    padding: 4px 12px;
+    font-size: 13px;
+}
+
+.editing-indicator {
+    display: inline-block;
+    padding: 4px 10px;
+    background-color: #ffc107;
+    color: #333;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.meal-day-add-dish {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ddd;
+}
+
+.meal-day-add-dish .btn {
+    width: 100%;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.meal-day-add-dish .btn:hover {
+    background-color: #218838;
+}
+

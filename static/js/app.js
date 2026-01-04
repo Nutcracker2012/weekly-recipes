@@ -2,6 +2,8 @@
 let currentInventory = [];
 let currentDishes = [];
 let currentMealPlan = '';
+let mealPlanData = {}; // Structured meal plan data: {day: [dishes]}
+let isEditingMealPlan = false;
 
 // DOM Elements
 const generatePlanBtn = document.getElementById('generate-plan-btn');
@@ -246,10 +248,12 @@ async function generateMealPlan() {
         const data = await response.json();
         if (response.ok) {
             currentMealPlan = data.meal_plan;
-            displayMealPlan(data.meal_plan);
+            parseMealPlan(data.meal_plan);
+            displayMealPlan(false); // false = view mode
             // Show meal plan output and hint
             document.getElementById('meal-plan-output').style.display = 'block';
             document.getElementById('meal-plan-hint').style.display = 'block';
+            document.getElementById('edit-plan-btn').style.display = 'inline-block';
             regeneratePlanBtn.style.display = 'inline-block';
             // Switch to meal plan tab
             switchToTab('meal-plan');
@@ -261,27 +265,264 @@ async function generateMealPlan() {
     }
 }
 
-// Display meal plan with clickable dish names
-function displayMealPlan(mealPlan) {
-    const lines = mealPlan.split('\n');
-    let html = '';
+// Parse meal plan text into structured data
+function parseMealPlan(planText) {
+    const lines = planText.split('\n');
+    mealPlanData = {};
+    let currentDay = null;
+    
+    // Initialize all 7 days
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    days.forEach(day => {
+        mealPlanData[day] = [];
+    });
     
     lines.forEach(line => {
         const trimmed = line.trim();
-        if (!trimmed) {
-            html += '\n';
-        } else if (['周日', '周一', '周二', '周三', '周四', '周五', '周六'].includes(trimmed)) {
-            html += `<strong>${trimmed}</strong>\n`;
-        } else if (trimmed !== '(待定)') {
-            // Make dish names clickable
-            html += `<span class="dish-name-clickable" onclick="markDishAsCooked('${trimmed}')" title="点击标记为已做">${trimmed}</span>\n`;
+        if (!trimmed) return;
+        
+        if (['周日', '周一', '周二', '周三', '周四', '周五', '周六'].includes(trimmed)) {
+            currentDay = trimmed;
+            if (!mealPlanData[currentDay]) {
+                mealPlanData[currentDay] = [];
+            }
+        } else if (currentDay) {
+            // Include all dishes, including "(待定)" placeholder
+            mealPlanData[currentDay].push(trimmed);
+        }
+    });
+}
+
+// Display meal plan
+function displayMealPlan(editMode) {
+    const container = document.getElementById('meal-plan-display');
+    container.innerHTML = '';
+    
+    if (editMode) {
+        container.classList.add('editing-mode');
+    } else {
+        container.classList.remove('editing-mode');
+    }
+    
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    
+    // Always display all 7 days
+    days.forEach(day => {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'meal-day';
+        
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'meal-day-header';
+        dayHeader.textContent = day;
+        dayDiv.appendChild(dayHeader);
+        
+        // Get dishes for this day, or show empty state
+        const dishes = mealPlanData[day] || [];
+        
+        if (dishes.length === 0 && !editMode) {
+            // Show placeholder if no dishes (only in view mode)
+            const dishDiv = document.createElement('div');
+            dishDiv.className = 'meal-dish';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'meal-dish-name';
+            nameSpan.textContent = '(待定)';
+            nameSpan.style.color = '#999';
+            nameSpan.style.fontStyle = 'italic';
+            dishDiv.appendChild(nameSpan);
+            dayDiv.appendChild(dishDiv);
         } else {
-            html += `${trimmed}\n`;
+            // Display existing dishes
+            dishes.forEach((dish, index) => {
+                // Skip placeholder in edit mode
+                if (editMode && dish === '(待定)') {
+                    return;
+                }
+                
+                const dishDiv = document.createElement('div');
+                dishDiv.className = 'meal-dish';
+                
+                if (editMode) {
+                    // Edit mode: show input and delete button
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'meal-dish-input';
+                    input.value = dish;
+                    input.onchange = (e) => updateDishName(day, index, e.target.value);
+                    dishDiv.appendChild(input);
+                    
+                    const actions = document.createElement('div');
+                    actions.className = 'meal-dish-actions';
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger btn-small';
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.onclick = () => deleteDish(day, index);
+                    actions.appendChild(deleteBtn);
+                    
+                    dishDiv.appendChild(actions);
+                } else {
+                    // View mode: show as clickable text (except for placeholder)
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'meal-dish-name';
+                    nameSpan.textContent = dish;
+                    if (dish === '(待定)') {
+                        nameSpan.style.color = '#999';
+                        nameSpan.style.fontStyle = 'italic';
+                    } else {
+                        nameSpan.onclick = () => markDishAsCooked(dish);
+                        nameSpan.title = '点击标记为已做';
+                        nameSpan.style.cursor = 'pointer';
+                    }
+                    dishDiv.appendChild(nameSpan);
+                }
+                
+                dayDiv.appendChild(dishDiv);
+            });
+        }
+        
+        // Add "Add Dish" button in edit mode
+        if (editMode) {
+            const addDishDiv = document.createElement('div');
+            addDishDiv.className = 'meal-day-add-dish';
+            const addDishBtn = document.createElement('button');
+            addDishBtn.className = 'btn btn-secondary btn-small';
+            addDishBtn.textContent = '+ 添加菜品';
+            addDishBtn.onclick = () => addDishToDay(day);
+            addDishDiv.appendChild(addDishBtn);
+            dayDiv.appendChild(addDishDiv);
+        }
+        
+        container.appendChild(dayDiv);
+    });
+}
+
+// Update dish name
+function updateDishName(day, index, newName) {
+    if (mealPlanData[day] && mealPlanData[day][index] !== undefined) {
+        mealPlanData[day][index] = newName.trim();
+    }
+}
+
+// Delete dish
+function deleteDish(day, index) {
+    if (!confirm(`确定要删除"${mealPlanData[day][index]}"吗？`)) {
+        return;
+    }
+    
+    if (mealPlanData[day]) {
+        mealPlanData[day].splice(index, 1);
+        displayMealPlan(true); // Refresh in edit mode
+    }
+}
+
+// Add dish to a specific day
+function addDishToDay(day) {
+    // Initialize day array if it doesn't exist
+    if (!mealPlanData[day]) {
+        mealPlanData[day] = [];
+    }
+    
+    // Remove placeholder if it exists
+    const placeholderIndex = mealPlanData[day].indexOf('(待定)');
+    if (placeholderIndex !== -1) {
+        mealPlanData[day].splice(placeholderIndex, 1);
+    }
+    
+    // Add new empty dish
+    mealPlanData[day].push('');
+    
+    // Refresh display
+    displayMealPlan(true);
+    
+    // Focus on the newly added input
+    const container = document.getElementById('meal-plan-display');
+    const dayDiv = Array.from(container.querySelectorAll('.meal-day')).find(d => 
+        d.querySelector('.meal-day-header').textContent === day
+    );
+    if (dayDiv) {
+        const inputs = dayDiv.querySelectorAll('.meal-dish-input');
+        if (inputs.length > 0) {
+            const lastInput = inputs[inputs.length - 1];
+            lastInput.focus();
+            lastInput.select();
+        }
+    }
+}
+
+// Enter edit mode
+document.getElementById('edit-plan-btn').addEventListener('click', () => {
+    isEditingMealPlan = true;
+    displayMealPlan(true);
+    document.getElementById('edit-plan-btn').style.display = 'none';
+    document.getElementById('save-plan-btn').style.display = 'inline-block';
+    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+});
+
+// Cancel edit
+document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+    if (!confirm('确定要取消编辑吗？所有修改将丢失。')) {
+        return;
+    }
+    
+    // Restore original meal plan
+    parseMealPlan(currentMealPlan);
+    isEditingMealPlan = false;
+    displayMealPlan(false);
+    document.getElementById('edit-plan-btn').style.display = 'inline-block';
+    document.getElementById('save-plan-btn').style.display = 'none';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+});
+
+// Save meal plan
+document.getElementById('save-plan-btn').addEventListener('click', () => {
+    const planName = document.getElementById('meal-plan-name').value.trim();
+    
+    if (!planName) {
+        alert('请输入餐单名称');
+        return;
+    }
+    
+    // Convert mealPlanData back to text format
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    let planText = '';
+    
+    // Always save all 7 days
+    days.forEach((day, index) => {
+        planText += day + '\n';
+        const dishes = (mealPlanData[day] || []).filter(dish => dish && dish.trim() !== '');
+        if (dishes.length > 0) {
+            dishes.forEach(dish => {
+                planText += dish.trim() + '\n';
+            });
+        } else {
+            // If no dishes, add placeholder
+            planText += '(待定)\n';
+        }
+        if (index < days.length - 1) {
+            planText += '\n';
         }
     });
     
-    mealPlanText.innerHTML = html;
-}
+    currentMealPlan = planText.trim();
+    
+    // Save to localStorage for now (you can implement backend saving later)
+    const savedPlans = JSON.parse(localStorage.getItem('savedMealPlans') || '[]');
+    savedPlans.push({
+        name: planName,
+        plan: currentMealPlan,
+        date: new Date().toISOString()
+    });
+    localStorage.setItem('savedMealPlans', JSON.stringify(savedPlans));
+    
+    alert(`餐单"${planName}"已保存！`);
+    
+    // Exit edit mode
+    isEditingMealPlan = false;
+    displayMealPlan(false);
+    document.getElementById('edit-plan-btn').style.display = 'inline-block';
+    document.getElementById('save-plan-btn').style.display = 'none';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+});
 
 // Mark dish as cooked
 async function markDishAsCooked(dishName) {

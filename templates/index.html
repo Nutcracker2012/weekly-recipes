@@ -38,10 +38,16 @@
                         <button id="regenerate-plan-btn" class="btn btn-primary" style="margin-left: 10px; display: none;">重新生成餐单</button>
                     </div>
                     <div class="meal-plan-output" id="meal-plan-output" style="display: none;">
-                        <pre id="meal-plan-text"></pre>
+                        <div class="meal-plan-controls">
+                            <input type="text" id="meal-plan-name" placeholder="输入餐单名称（例如：一周晚餐）" style="flex: 1; max-width: 300px;">
+                            <button id="edit-plan-btn" class="btn btn-secondary" style="margin-left: 10px;">编辑餐单</button>
+                            <button id="save-plan-btn" class="btn btn-primary" style="margin-left: 10px; display: none;">保存餐单</button>
+                            <button id="cancel-edit-btn" class="btn btn-secondary" style="margin-left: 10px; display: none;">取消编辑</button>
+                        </div>
+                        <div id="meal-plan-display"></div>
                     </div>
                     <div id="meal-plan-hint" style="margin-top: 15px; display: none;">
-                        <p><strong>提示：</strong>点击菜品名称可标记为"已做"，系统会自动减少相应配料的库存。</p>
+                        <p><strong>提示：</strong>点击"编辑餐单"可以修改菜名、删除菜品或添加新菜品。编辑完成后点击"保存餐单"。</p>
                     </div>
                 </div>
 
