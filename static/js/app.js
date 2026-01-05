@@ -54,6 +54,31 @@ window.addEventListener('click', (event) => {
     }
 });
 
+// Edit meal plan dish modal elements
+const editMealPlanDishModal = document.getElementById('edit-meal-plan-dish-modal');
+const closeEditMealPlanDishModal = document.querySelector('.close-edit-meal-plan-dish');
+const cancelEditMealPlanDishBtn = document.getElementById('cancel-edit-meal-plan-dish-btn');
+const editMealPlanDishForm = document.getElementById('edit-meal-plan-dish-form');
+
+// Close edit meal plan dish modal
+if (closeEditMealPlanDishModal) {
+    closeEditMealPlanDishModal.addEventListener('click', () => {
+        editMealPlanDishModal.style.display = 'none';
+    });
+}
+
+if (cancelEditMealPlanDishBtn) {
+    cancelEditMealPlanDishBtn.addEventListener('click', () => {
+        editMealPlanDishModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (event) => {
+    if (event.target === editMealPlanDishModal) {
+        editMealPlanDishModal.style.display = 'none';
+    }
+});
+
 // Weee import modal elements
 const pasteWeeeBtn = document.getElementById('paste-weee-btn');
 const weeeModal = document.getElementById('weee-modal');
@@ -424,7 +449,7 @@ function displayMealPlanTable() {
             `;
             tbody.appendChild(row);
         } else {
-            dishes.forEach(dish => {
+            dishes.forEach((dish, dishIndex) => {
                 if (dish === '(待定)') return;
                 
                 // Find dish info from currentDishes
@@ -443,16 +468,28 @@ function displayMealPlanTable() {
                     row.style.textDecoration = 'line-through';
                 }
                 
+                // Escape single quotes in dish name for onclick
+                const escapedDish = dish.replace(/'/g, "\\'");
+                
+                // Build action buttons
+                let actionButtons = '';
+                if (isCooked) {
+                    actionButtons = '<span style="color: #28a745; font-weight: 600;">已做</span>';
+                } else {
+                    actionButtons = `
+                        <button class="btn btn-primary btn-small" onclick="openMarkCookedModal('${escapedDish}', '${day}')">标记为已做</button>
+                        <button class="btn btn-edit btn-small" onclick="editMealPlanDish('${day}', ${dishIndex})">编辑</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteMealPlanDishFromTable('${day}', ${dishIndex})">删除</button>
+                    `;
+                }
+                
                 row.innerHTML = `
                     <td>${day}</td>
                     <td>${dish}</td>
                     <td>${category}</td>
                     <td>${ingredientsText}</td>
-                    <td>
-                        ${isCooked 
-                            ? '<span style="color: #28a745; font-weight: 600;">已做</span>' 
-                            : `<button class="btn btn-primary btn-small" onclick="openMarkCookedModal('${dish}', '${day}')">标记为已做</button>`
-                        }
+                    <td style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        ${actionButtons}
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -481,6 +518,148 @@ function deleteMealPlanDish(day, index) {
         mealPlanData[day].splice(index, 1);
         displayMealPlan(true); // Refresh in edit mode
     }
+}
+
+// Delete dish from meal plan table
+function deleteMealPlanDishFromTable(day, dishIndex) {
+    const dishName = mealPlanData[day] && mealPlanData[day][dishIndex];
+    if (!dishName) return;
+    
+    if (!confirm(`确定要删除"${dishName}"吗？`)) {
+        return;
+    }
+    
+    if (mealPlanData[day]) {
+        mealPlanData[day].splice(dishIndex, 1);
+        // Update cookedDishes if this dish was marked as cooked
+        cookedDishes.delete(dishName);
+        // Refresh display
+        displayMealPlan(false);
+    }
+}
+
+// Edit dish in meal plan table
+function editMealPlanDish(day, dishIndex) {
+    const dishName = mealPlanData[day] && mealPlanData[day][dishIndex];
+    if (!dishName) return;
+    
+    // Find dish info from currentDishes
+    const dishInfo = currentDishes.find(d => d.name === dishName);
+    
+    // Open edit modal
+    openMealPlanDishEditModal(day, dishIndex, dishName, dishInfo);
+}
+
+// Open edit meal plan dish modal
+function openMealPlanDishEditModal(day, dishIndex, dishName, dishInfo) {
+    document.getElementById('edit-meal-plan-day').value = day;
+    document.getElementById('edit-meal-plan-dish-index').value = dishIndex;
+    document.getElementById('edit-meal-plan-dish-name').value = dishName;
+    
+    // Set ingredients - use from dishInfo if available, otherwise empty
+    const ingredients = dishInfo && dishInfo.ingredients ? dishInfo.ingredients.join(', ') : '';
+    document.getElementById('edit-meal-plan-dish-ingredients').value = ingredients;
+    
+    editMealPlanDishModal.style.display = 'block';
+}
+
+// Submit edit meal plan dish form
+if (editMealPlanDishForm) {
+    editMealPlanDishForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const day = document.getElementById('edit-meal-plan-day').value;
+        const dishIndex = parseInt(document.getElementById('edit-meal-plan-dish-index').value);
+        const newDishName = document.getElementById('edit-meal-plan-dish-name').value.trim();
+        const ingredientsText = document.getElementById('edit-meal-plan-dish-ingredients').value.trim();
+        
+        if (!newDishName) {
+            alert('请输入菜品名称');
+            return;
+        }
+        
+        if (!ingredientsText) {
+            alert('请输入食材');
+            return;
+        }
+        
+        const ingredients = ingredientsText.split(',').map(i => i.trim()).filter(i => i);
+        
+        if (ingredients.length === 0) {
+            alert('请输入至少一个食材');
+            return;
+        }
+        
+        // Get old dish name for updating cookedDishes
+        const oldDishName = mealPlanData[day] && mealPlanData[day][dishIndex];
+        
+        // Update meal plan data
+        if (mealPlanData[day] && mealPlanData[day][dishIndex] !== undefined) {
+            mealPlanData[day][dishIndex] = newDishName;
+        }
+        
+        // Update cookedDishes if name changed
+        if (oldDishName && oldDishName !== newDishName && cookedDishes.has(oldDishName)) {
+            cookedDishes.delete(oldDishName);
+            cookedDishes.add(newDishName);
+        }
+        
+        // Check if dish exists in currentDishes, update or create
+        const existingDish = currentDishes.find(d => d.name === newDishName);
+        
+        try {
+            if (existingDish) {
+                // Update existing dish
+                const response = await fetch(`/api/dishes/${existingDish.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: newDishName,
+                        category: existingDish.category, // Keep existing category
+                        ingredients: ingredients,
+                    }),
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    alert('更新菜品失败: ' + data.error);
+                    return;
+                }
+            } else {
+                // Create new dish if it doesn't exist
+                const response = await fetch('/api/dishes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: newDishName,
+                        category: '其他', // Default category
+                        ingredients: ingredients,
+                    }),
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    alert('创建菜品失败: ' + data.error);
+                    return;
+                }
+            }
+            
+            // Reload dishes to get updated data
+            await loadDishes();
+            
+            // Close modal
+            editMealPlanDishModal.style.display = 'none';
+            
+            // Refresh meal plan display
+            displayMealPlan(false);
+        } catch (error) {
+            alert('错误: ' + error.message);
+        }
+    });
 }
 
 // Add dish to a specific day

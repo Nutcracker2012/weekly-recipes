@@ -191,16 +191,27 @@
         </div>
     </div>
 
-    <!-- Mark Cooked Modal -->
-    <div id="mark-cooked-modal" class="modal" style="display: none;">
-        <div class="modal-content modal-large">
-            <span class="close-mark-cooked">&times;</span>
-            <h2 id="mark-cooked-modal-title">标记为已做</h2>
-            <div id="mark-cooked-modal-body"></div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-primary" onclick="confirmMarkCooked()">确认</button>
-                <button type="button" class="btn btn-secondary" id="cancel-mark-cooked-btn">取消</button>
-            </div>
+    <!-- Edit Meal Plan Dish Modal -->
+    <div id="edit-meal-plan-dish-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-edit-meal-plan-dish">&times;</span>
+            <h2>编辑菜品</h2>
+            <form id="edit-meal-plan-dish-form">
+                <input type="hidden" id="edit-meal-plan-day">
+                <input type="hidden" id="edit-meal-plan-dish-index">
+                <div class="form-group">
+                    <label for="edit-meal-plan-dish-name">菜品名称：</label>
+                    <input type="text" id="edit-meal-plan-dish-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-meal-plan-dish-ingredients">食材（用逗号分隔）：</label>
+                    <input type="text" id="edit-meal-plan-dish-ingredients" placeholder="鸡肉, 花生" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-edit-meal-plan-dish-btn">取消</button>
+                </div>
+            </form>
         </div>
     </div>
 
