@@ -10,6 +10,7 @@ from inventory_parser import parse_weee_text
 from dish_manager import DishManager
 from recipe_planner import RecipePlanner
 from inventory_manager import InventoryManager
+from meal_plan_manager import MealPlanManager
 
 app = Flask(__name__)
 
@@ -17,6 +18,7 @@ app = Flask(__name__)
 dish_manager = DishManager("data/dishes.json")
 recipe_planner = RecipePlanner("data/dishes.json", "data/past_meals.csv")
 inventory_manager = InventoryManager("data/inventory.json")
+meal_plan_manager = MealPlanManager("data/meal_plans.json")
 
 
 @app.route('/')
@@ -232,6 +234,41 @@ def delete_inventory_item(item_name):
             return jsonify({"message": "Item deleted successfully"}), 200
         else:
             return jsonify({"error": error}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Meal Plan Management API
+@app.route('/api/meal-plans', methods=['POST'])
+def save_meal_plan():
+    """Save a meal plan."""
+    try:
+        data = request.get_json()
+        plan_name = data.get('name', '').strip()
+        plan_text = data.get('plan', '').strip()
+        
+        if not plan_name:
+            return jsonify({"error": "Plan name is required"}), 400
+        
+        if not plan_text:
+            return jsonify({"error": "Plan content is required"}), 400
+        
+        success, error, saved_plan = meal_plan_manager.save_meal_plan(plan_name, plan_text)
+        
+        if success:
+            return jsonify({"meal_plan": saved_plan}), 201
+        else:
+            return jsonify({"error": error}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/meal-plans', methods=['GET'])
+def get_meal_plans():
+    """Get all saved meal plans."""
+    try:
+        meal_plans = meal_plan_manager.get_all_meal_plans()
+        return jsonify({"meal_plans": meal_plans}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -474,7 +474,7 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
 });
 
 // Save meal plan
-document.getElementById('save-plan-btn').addEventListener('click', () => {
+document.getElementById('save-plan-btn').addEventListener('click', async () => {
     const planName = document.getElementById('meal-plan-name').value.trim();
     
     if (!planName) {
@@ -505,23 +505,35 @@ document.getElementById('save-plan-btn').addEventListener('click', () => {
     
     currentMealPlan = planText.trim();
     
-    // Save to localStorage for now (you can implement backend saving later)
-    const savedPlans = JSON.parse(localStorage.getItem('savedMealPlans') || '[]');
-    savedPlans.push({
-        name: planName,
-        plan: currentMealPlan,
-        date: new Date().toISOString()
-    });
-    localStorage.setItem('savedMealPlans', JSON.stringify(savedPlans));
-    
-    alert(`餐单"${planName}"已保存！`);
-    
-    // Exit edit mode
-    isEditingMealPlan = false;
-    displayMealPlan(false);
-    document.getElementById('edit-plan-btn').style.display = 'inline-block';
-    document.getElementById('save-plan-btn').style.display = 'none';
-    document.getElementById('cancel-edit-btn').style.display = 'none';
+    // Save to backend
+    try {
+        const response = await fetch('/api/meal-plans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: planName,
+                plan: currentMealPlan,
+            }),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            alert(`餐单"${planName}"已保存！`);
+            
+            // Exit edit mode
+            isEditingMealPlan = false;
+            displayMealPlan(false);
+            document.getElementById('edit-plan-btn').style.display = 'inline-block';
+            document.getElementById('save-plan-btn').style.display = 'none';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+        } else {
+            alert('保存失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
 });
 
 // Mark dish as cooked
