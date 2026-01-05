@@ -356,7 +356,7 @@ function displayMealPlan(editMode) {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'btn btn-danger btn-small';
                     deleteBtn.textContent = '删除';
-                    deleteBtn.onclick = () => deleteDish(day, index);
+                    deleteBtn.onclick = () => deleteMealPlanDish(day, index);
                     actions.appendChild(deleteBtn);
                     
                     dishDiv.appendChild(actions);
@@ -403,8 +403,8 @@ function updateDishName(day, index, newName) {
     }
 }
 
-// Delete dish
-function deleteDish(day, index) {
+// Delete dish from meal plan
+function deleteMealPlanDish(day, index) {
     if (!confirm(`确定要删除"${mealPlanData[day][index]}"吗？`)) {
         return;
     }
@@ -474,7 +474,7 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
 });
 
 // Save meal plan
-document.getElementById('save-plan-btn').addEventListener('click', async () => {
+document.getElementById('save-plan-btn').addEventListener('click', () => {
     const planName = document.getElementById('meal-plan-name').value.trim();
     
     if (!planName) {
@@ -505,35 +505,23 @@ document.getElementById('save-plan-btn').addEventListener('click', async () => {
     
     currentMealPlan = planText.trim();
     
-    // Save to backend
-    try {
-        const response = await fetch('/api/meal-plans', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: planName,
-                plan: currentMealPlan,
-            }),
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            alert(`餐单"${planName}"已保存！`);
-            
-            // Exit edit mode
-            isEditingMealPlan = false;
-            displayMealPlan(false);
-            document.getElementById('edit-plan-btn').style.display = 'inline-block';
-            document.getElementById('save-plan-btn').style.display = 'none';
-            document.getElementById('cancel-edit-btn').style.display = 'none';
-        } else {
-            alert('保存失败: ' + data.error);
-        }
-    } catch (error) {
-        alert('错误: ' + error.message);
-    }
+    // Save to localStorage for now (you can implement backend saving later)
+    const savedPlans = JSON.parse(localStorage.getItem('savedMealPlans') || '[]');
+    savedPlans.push({
+        name: planName,
+        plan: currentMealPlan,
+        date: new Date().toISOString()
+    });
+    localStorage.setItem('savedMealPlans', JSON.stringify(savedPlans));
+    
+    alert(`餐单"${planName}"已保存！`);
+    
+    // Exit edit mode
+    isEditingMealPlan = false;
+    displayMealPlan(false);
+    document.getElementById('edit-plan-btn').style.display = 'inline-block';
+    document.getElementById('save-plan-btn').style.display = 'none';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
 });
 
 // Mark dish as cooked
