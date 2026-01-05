@@ -10,7 +10,6 @@ from inventory_parser import parse_weee_text
 from dish_manager import DishManager
 from recipe_planner import RecipePlanner
 from inventory_manager import InventoryManager
-from meal_plan_manager import MealPlanManager
 
 app = Flask(__name__)
 
@@ -18,7 +17,6 @@ app = Flask(__name__)
 dish_manager = DishManager("data/dishes.json")
 recipe_planner = RecipePlanner("data/dishes.json", "data/past_meals.csv")
 inventory_manager = InventoryManager("data/inventory.json")
-meal_plan_manager = MealPlanManager("data/meal_plans.json")
 
 
 @app.route('/')
@@ -135,6 +133,7 @@ def record_meal():
         date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
         dish_name = data.get('dish_name', '')
         consume_ingredients = data.get('consume_ingredients', True)  # Default to consuming
+        ingredient_amounts = data.get('ingredient_amounts', {})  # Custom amounts per ingredient
         
         if not dish_name:
             return jsonify({"error": "Dish name required"}), 400
@@ -155,7 +154,42 @@ def record_meal():
             
             if dish:
                 ingredients = dish.get("ingredients", [])
-                consumption_results = inventory_manager.consume_ingredients(ingredients, amount=1.0)
+                
+                # If custom amounts provided, use them; otherwise use default
+                if ingredient_amounts:
+                    # Consume with custom amounts
+                    inventory = inventory_manager.get_all_items()
+                    for ingredient in ingredients:
+                        # Find matching inventory item
+                        matched_item = None
+                        for item in inventory:
+                            item_name = item.get("item", "").lower()
+                            ingredient_lower = ingredient.lower()
+                            
+                            if item_name == ingredient_lower or \
+                               ingredient_lower in item_name or \
+                               item_name in ingredient_lower:
+                                matched_item = item
+                                break
+                        
+                        if matched_item:
+                            # Get custom amount for this item, or default to 1.0
+                            item_name = matched_item.get("item")
+                            amount = ingredient_amounts.get(item_name, 1.0)
+                            
+                            success, error, updated_item = inventory_manager.decrease_item_quantity(
+                                item_name, amount
+                            )
+                            consumption_results[ingredient] = (success, error, updated_item)
+                        else:
+                            consumption_results[ingredient] = (
+                                False, 
+                                f"'{ingredient}' not found in inventory", 
+                                None
+                            )
+                else:
+                    # Use default consumption
+                    consumption_results = inventory_manager.consume_ingredients(ingredients, amount=1.0)
         
         return jsonify({
             "message": "Meal recorded successfully",
@@ -234,41 +268,6 @@ def delete_inventory_item(item_name):
             return jsonify({"message": "Item deleted successfully"}), 200
         else:
             return jsonify({"error": error}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Meal Plan Management API
-@app.route('/api/meal-plans', methods=['POST'])
-def save_meal_plan():
-    """Save a meal plan."""
-    try:
-        data = request.get_json()
-        plan_name = data.get('name', '').strip()
-        plan_text = data.get('plan', '').strip()
-        
-        if not plan_name:
-            return jsonify({"error": "Plan name is required"}), 400
-        
-        if not plan_text:
-            return jsonify({"error": "Plan content is required"}), 400
-        
-        success, error, saved_plan = meal_plan_manager.save_meal_plan(plan_name, plan_text)
-        
-        if success:
-            return jsonify({"meal_plan": saved_plan}), 201
-        else:
-            return jsonify({"error": error}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/meal-plans', methods=['GET'])
-def get_meal_plans():
-    """Get all saved meal plans."""
-    try:
-        meal_plans = meal_plan_manager.get_all_meal_plans()
-        return jsonify({"meal_plans": meal_plans}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

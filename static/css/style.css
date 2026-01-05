@@ -467,6 +467,21 @@ table tbody tr:hover {
     color: #000;
 }
 
+.close-mark-cooked {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    right: 20px;
+    top: 15px;
+}
+
+.close-mark-cooked:hover {
+    color: #000;
+}
+
 /* Meal Plan Editing Styles */
 .meal-plan-controls {
     display: flex;

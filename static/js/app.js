@@ -4,6 +4,7 @@ let currentDishes = [];
 let currentMealPlan = '';
 let mealPlanData = {}; // Structured meal plan data: {day: [dishes]}
 let isEditingMealPlan = false;
+let cookedDishes = new Set(); // Track which dishes are marked as cooked
 
 // DOM Elements
 const generatePlanBtn = document.getElementById('generate-plan-btn');
@@ -28,6 +29,30 @@ const inventoryModal = document.getElementById('inventory-modal');
 const inventoryForm = document.getElementById('inventory-form');
 const closeInventoryModal = document.querySelector('.close-inventory');
 const cancelInventoryBtn = document.getElementById('cancel-inventory-btn');
+
+// Mark cooked modal elements
+const markCookedModal = document.getElementById('mark-cooked-modal');
+const closeMarkCookedModal = document.querySelector('.close-mark-cooked');
+const cancelMarkCookedBtn = document.getElementById('cancel-mark-cooked-btn');
+
+// Close mark cooked modal
+if (closeMarkCookedModal) {
+    closeMarkCookedModal.addEventListener('click', () => {
+        markCookedModal.style.display = 'none';
+    });
+}
+
+if (cancelMarkCookedBtn) {
+    cancelMarkCookedBtn.addEventListener('click', () => {
+        markCookedModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (event) => {
+    if (event.target === markCookedModal) {
+        markCookedModal.style.display = 'none';
+    }
+});
 
 // Weee import modal elements
 const pasteWeeeBtn = document.getElementById('paste-weee-btn');
@@ -249,6 +274,12 @@ async function generateMealPlan() {
         if (response.ok) {
             currentMealPlan = data.meal_plan;
             parseMealPlan(data.meal_plan);
+            // Reset cooked dishes when generating new plan
+            cookedDishes.clear();
+            // Ensure dishes are loaded before displaying
+            if (currentDishes.length === 0) {
+                await loadDishes();
+            }
             displayMealPlan(false); // false = view mode
             // Show meal plan output and hint
             document.getElementById('meal-plan-output').style.display = 'block';
@@ -300,88 +331,44 @@ function displayMealPlan(editMode) {
     
     if (editMode) {
         container.classList.add('editing-mode');
-    } else {
-        container.classList.remove('editing-mode');
-    }
-    
-    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    
-    // Always display all 7 days
-    days.forEach(day => {
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'meal-day';
-        
-        const dayHeader = document.createElement('div');
-        dayHeader.className = 'meal-day-header';
-        dayHeader.textContent = day;
-        dayDiv.appendChild(dayHeader);
-        
-        // Get dishes for this day, or show empty state
-        const dishes = mealPlanData[day] || [];
-        
-        if (dishes.length === 0 && !editMode) {
-            // Show placeholder if no dishes (only in view mode)
-            const dishDiv = document.createElement('div');
-            dishDiv.className = 'meal-dish';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'meal-dish-name';
-            nameSpan.textContent = '(待定)';
-            nameSpan.style.color = '#999';
-            nameSpan.style.fontStyle = 'italic';
-            dishDiv.appendChild(nameSpan);
-            dayDiv.appendChild(dishDiv);
-        } else {
-            // Display existing dishes
+        // In edit mode, show the old format
+        const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        days.forEach(day => {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'meal-day';
+            
+            const dayHeader = document.createElement('div');
+            dayHeader.className = 'meal-day-header';
+            dayHeader.textContent = day;
+            dayDiv.appendChild(dayHeader);
+            
+            const dishes = mealPlanData[day] || [];
             dishes.forEach((dish, index) => {
-                // Skip placeholder in edit mode
-                if (editMode && dish === '(待定)') {
-                    return;
-                }
+                if (dish === '(待定)') return;
                 
                 const dishDiv = document.createElement('div');
                 dishDiv.className = 'meal-dish';
                 
-                if (editMode) {
-                    // Edit mode: show input and delete button
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'meal-dish-input';
-                    input.value = dish;
-                    input.onchange = (e) => updateDishName(day, index, e.target.value);
-                    dishDiv.appendChild(input);
-                    
-                    const actions = document.createElement('div');
-                    actions.className = 'meal-dish-actions';
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn btn-danger btn-small';
-                    deleteBtn.textContent = '删除';
-                    deleteBtn.onclick = () => deleteMealPlanDish(day, index);
-                    actions.appendChild(deleteBtn);
-                    
-                    dishDiv.appendChild(actions);
-                } else {
-                    // View mode: show as clickable text (except for placeholder)
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'meal-dish-name';
-                    nameSpan.textContent = dish;
-                    if (dish === '(待定)') {
-                        nameSpan.style.color = '#999';
-                        nameSpan.style.fontStyle = 'italic';
-                    } else {
-                        nameSpan.onclick = () => markDishAsCooked(dish);
-                        nameSpan.title = '点击标记为已做';
-                        nameSpan.style.cursor = 'pointer';
-                    }
-                    dishDiv.appendChild(nameSpan);
-                }
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'meal-dish-input';
+                input.value = dish;
+                input.onchange = (e) => updateDishName(day, index, e.target.value);
+                dishDiv.appendChild(input);
                 
+                const actions = document.createElement('div');
+                actions.className = 'meal-dish-actions';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger btn-small';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = () => deleteMealPlanDish(day, index);
+                actions.appendChild(deleteBtn);
+                
+                dishDiv.appendChild(actions);
                 dayDiv.appendChild(dishDiv);
             });
-        }
-        
-        // Add "Add Dish" button in edit mode
-        if (editMode) {
+            
             const addDishDiv = document.createElement('div');
             addDishDiv.className = 'meal-day-add-dish';
             const addDishBtn = document.createElement('button');
@@ -390,10 +377,91 @@ function displayMealPlan(editMode) {
             addDishBtn.onclick = () => addDishToDay(day);
             addDishDiv.appendChild(addDishBtn);
             dayDiv.appendChild(addDishDiv);
-        }
+            
+            container.appendChild(dayDiv);
+        });
+    } else {
+        container.classList.remove('editing-mode');
+        // In view mode, show table format
+        displayMealPlanTable();
+    }
+}
+
+// Display meal plan as table
+function displayMealPlanTable() {
+    const container = document.getElementById('meal-plan-display');
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    
+    // Create table
+    const table = document.createElement('table');
+    table.id = 'meal-plan-table';
+    
+    // Create header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th>日期</th>
+            <th>菜品名称</th>
+            <th>类别</th>
+            <th>食材清单</th>
+            <th>操作</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+    
+    // Create body
+    const tbody = document.createElement('tbody');
+    
+    days.forEach(day => {
+        const dishes = mealPlanData[day] || [];
         
-        container.appendChild(dayDiv);
+        if (dishes.length === 0) {
+            // Show placeholder row
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${day}</td>
+                <td colspan="4" style="text-align: center; color: #999; font-style: italic;">(待定)</td>
+            `;
+            tbody.appendChild(row);
+        } else {
+            dishes.forEach(dish => {
+                if (dish === '(待定)') return;
+                
+                // Find dish info from currentDishes
+                const dishInfo = currentDishes.find(d => d.name === dish);
+                const category = dishInfo ? dishInfo.category : '未知';
+                const ingredients = dishInfo ? dishInfo.ingredients : [];
+                const ingredientsText = ingredients.length > 0 
+                    ? ingredients.join(', ') 
+                    : '无';
+                
+                const isCooked = cookedDishes.has(dish);
+                
+                const row = document.createElement('tr');
+                if (isCooked) {
+                    row.style.opacity = '0.6';
+                    row.style.textDecoration = 'line-through';
+                }
+                
+                row.innerHTML = `
+                    <td>${day}</td>
+                    <td>${dish}</td>
+                    <td>${category}</td>
+                    <td>${ingredientsText}</td>
+                    <td>
+                        ${isCooked 
+                            ? '<span style="color: #28a745; font-weight: 600;">已做</span>' 
+                            : `<button class="btn btn-primary btn-small" onclick="openMarkCookedModal('${dish}', '${day}')">标记为已做</button>`
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     });
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
 }
 
 // Update dish name
@@ -524,12 +592,153 @@ document.getElementById('save-plan-btn').addEventListener('click', () => {
     document.getElementById('cancel-edit-btn').style.display = 'none';
 });
 
-// Mark dish as cooked
-async function markDishAsCooked(dishName) {
-    if (!confirm(`确定要将 "${dishName}" 标记为已做吗？\n这将自动减少相应配料的库存。`)) {
+// Open mark cooked modal
+async function openMarkCookedModal(dishName, day) {
+    // Find dish info
+    const dishInfo = currentDishes.find(d => d.name === dishName);
+    if (!dishInfo) {
+        alert('找不到菜品信息');
         return;
     }
+    
+    const ingredients = dishInfo.ingredients || [];
+    if (ingredients.length === 0) {
+        alert('该菜品没有食材信息');
+        return;
+    }
+    
+    // Load current inventory
+    await loadCurrentInventory();
+    
+    // Prepare ingredient data with current inventory info
+    const ingredientData = [];
+    for (const ingredient of ingredients) {
+        // Find matching inventory item
+        const inventoryItem = currentInventory.find(item => {
+            const itemName = (item.item || '').toLowerCase();
+            const ingName = ingredient.toLowerCase();
+            return itemName === ingName || itemName.includes(ingName) || ingName.includes(itemName);
+        });
+        
+        ingredientData.push({
+            name: ingredient,
+            inventoryItem: inventoryItem,
+            defaultAmount: 1.0,
+            adjustedAmount: 1.0
+        });
+    }
+    
+    // Display modal
+    displayMarkCookedModal(dishName, day, ingredientData);
+}
 
+// Display mark cooked modal
+function displayMarkCookedModal(dishName, day, ingredientData) {
+    const modal = document.getElementById('mark-cooked-modal');
+    const modalTitle = document.getElementById('mark-cooked-modal-title');
+    const modalBody = document.getElementById('mark-cooked-modal-body');
+    
+    modalTitle.textContent = `标记为已做：${dishName}`;
+    
+    // Create table for ingredients
+    let tableHTML = `
+        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>食材名称</th>
+                        <th>当前库存</th>
+                        <th>扣减数量</th>
+                        <th>扣减后库存</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    ingredientData.forEach((item, index) => {
+        const invItem = item.inventoryItem;
+        const currentQty = invItem ? (invItem.quantity || 0) : 0;
+        const unit = invItem ? (invItem.unit || '') : '';
+        const afterQty = Math.max(0, currentQty - item.adjustedAmount);
+        
+        tableHTML += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${currentQty > 0 ? `${currentQty} ${unit}` : '<span style="color: #dc3545;">无库存</span>'}</td>
+                <td>
+                    <input type="number" 
+                           id="ingredient-amount-${index}" 
+                           value="${item.adjustedAmount}" 
+                           step="0.1" 
+                           min="0" 
+                           max="${currentQty}"
+                           style="width: 80px; padding: 4px;"
+                           onchange="updateIngredientAmount(${index}, ${currentQty})">
+                    ${unit ? `<span style="margin-left: 5px;">${unit}</span>` : ''}
+                </td>
+                <td id="after-qty-${index}">${afterQty >= 0 ? `${afterQty} ${unit}` : '<span style="color: #dc3545;">不足</span>'}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    modalBody.innerHTML = tableHTML;
+    
+    // Store ingredient data in modal for later use
+    modal.dataset.dishName = dishName;
+    modal.dataset.day = day;
+    modal.dataset.ingredientData = JSON.stringify(ingredientData);
+    
+    modal.style.display = 'block';
+}
+
+// Update ingredient amount in modal
+function updateIngredientAmount(index, maxQty) {
+    const input = document.getElementById(`ingredient-amount-${index}`);
+    const amount = parseFloat(input.value) || 0;
+    const adjustedAmount = Math.min(Math.max(0, amount), maxQty);
+    input.value = adjustedAmount;
+    
+    // Update after quantity
+    const afterQtyCell = document.getElementById(`after-qty-${index}`);
+    const modal = document.getElementById('mark-cooked-modal');
+    const ingredientData = JSON.parse(modal.dataset.ingredientData || '[]');
+    
+    if (ingredientData[index]) {
+        ingredientData[index].adjustedAmount = adjustedAmount;
+        const invItem = ingredientData[index].inventoryItem;
+        const currentQty = invItem ? (invItem.quantity || 0) : 0;
+        const unit = invItem ? (invItem.unit || '') : '';
+        const afterQty = Math.max(0, currentQty - adjustedAmount);
+        afterQtyCell.innerHTML = afterQty >= 0 ? `${afterQty} ${unit}` : '<span style="color: #dc3545;">不足</span>';
+        
+        // Update stored data
+        modal.dataset.ingredientData = JSON.stringify(ingredientData);
+    }
+}
+
+// Confirm mark as cooked
+async function confirmMarkCooked() {
+    const modal = document.getElementById('mark-cooked-modal');
+    const dishName = modal.dataset.dishName;
+    const ingredientData = JSON.parse(modal.dataset.ingredientData || '[]');
+    
+    // Prepare consumption data - read from input fields to get latest values
+    const consumptionData = {};
+    ingredientData.forEach((item, index) => {
+        if (item.inventoryItem) {
+            // Read the current value from the input field
+            const input = document.getElementById(`ingredient-amount-${index}`);
+            const amount = parseFloat(input ? input.value : item.adjustedAmount) || 0;
+            consumptionData[item.inventoryItem.item] = amount;
+        }
+    });
+    
     try {
         const response = await fetch('/api/past-meals', {
             method: 'POST',
@@ -539,22 +748,35 @@ async function markDishAsCooked(dishName) {
             body: JSON.stringify({
                 dish_name: dishName,
                 consume_ingredients: true,
+                ingredient_amounts: consumptionData,
             }),
         });
 
         const data = await response.json();
         if (response.ok) {
-            alert(`"${dishName}" 已标记为已做！\n库存已自动更新。`);
+            // Mark as cooked
+            cookedDishes.add(dishName);
+            
+            // Close modal
+            modal.style.display = 'none';
+            
+            // Refresh display
             loadCurrentInventory();
             loadPastMeals();
-            // Regenerate meal plan to reflect changes
-            await generateMealPlan();
+            displayMealPlan(false);
+            
+            alert(`"${dishName}" 已标记为已做！\n库存已更新。`);
         } else {
             alert('标记失败: ' + data.error);
         }
     } catch (error) {
         alert('错误: ' + error.message);
     }
+}
+
+// Mark dish as cooked (old function, kept for compatibility)
+async function markDishAsCooked(dishName) {
+    await openMarkCookedModal(dishName, '');
 }
 
 // Load dishes
