@@ -79,6 +79,41 @@ window.addEventListener('click', (event) => {
     }
 });
 
+// Manual add dish modal elements
+const manualAddDishModal = document.getElementById('manual-add-dish-modal');
+const closeManualAddDishModal = document.querySelector('.close-manual-add-dish');
+const cancelManualAddDishBtn = document.getElementById('cancel-manual-add-dish-btn');
+const manualAddDishForm = document.getElementById('manual-add-dish-form');
+const manualAddDishBtn = document.getElementById('manual-add-dish-btn');
+
+// Open manual add dish modal
+if (manualAddDishBtn) {
+    manualAddDishBtn.addEventListener('click', () => {
+        // Reset form
+        manualAddDishForm.reset();
+        manualAddDishModal.style.display = 'block';
+    });
+}
+
+// Close manual add dish modal
+if (closeManualAddDishModal) {
+    closeManualAddDishModal.addEventListener('click', () => {
+        manualAddDishModal.style.display = 'none';
+    });
+}
+
+if (cancelManualAddDishBtn) {
+    cancelManualAddDishBtn.addEventListener('click', () => {
+        manualAddDishModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (event) => {
+    if (event.target === manualAddDishModal) {
+        manualAddDishModal.style.display = 'none';
+    }
+});
+
 // Weee import modal elements
 const pasteWeeeBtn = document.getElementById('paste-weee-btn');
 const weeeModal = document.getElementById('weee-modal');
@@ -629,6 +664,7 @@ if (editMealPlanDishForm) {
                 }
             } else {
                 // Create new dish if it doesn't exist
+                // Default to '肉类' as a valid category
                 const response = await fetch('/api/dishes', {
                     method: 'POST',
                     headers: {
@@ -636,7 +672,7 @@ if (editMealPlanDishForm) {
                     },
                     body: JSON.stringify({
                         name: newDishName,
-                        category: '其他', // Default category
+                        category: '肉类', // Default to a valid category
                         ingredients: ingredients,
                     }),
                 });
@@ -653,6 +689,108 @@ if (editMealPlanDishForm) {
             
             // Close modal
             editMealPlanDishModal.style.display = 'none';
+            
+            // Refresh meal plan display
+            displayMealPlan(false);
+        } catch (error) {
+            alert('错误: ' + error.message);
+        }
+    });
+}
+
+// Submit manual add dish form
+if (manualAddDishForm) {
+    manualAddDishForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const day = document.getElementById('manual-add-dish-day').value;
+        const dishName = document.getElementById('manual-add-dish-name').value.trim();
+        const category = document.getElementById('manual-add-dish-category').value;
+        const ingredientsText = document.getElementById('manual-add-dish-ingredients').value.trim();
+        
+        if (!dishName) {
+            alert('请输入菜品名称');
+            return;
+        }
+        
+        if (!ingredientsText) {
+            alert('请输入食材');
+            return;
+        }
+        
+        const ingredients = ingredientsText.split(',').map(i => i.trim()).filter(i => i);
+        
+        if (ingredients.length === 0) {
+            alert('请输入至少一个食材');
+            return;
+        }
+        
+        // Initialize day array if it doesn't exist
+        if (!mealPlanData[day]) {
+            mealPlanData[day] = [];
+        }
+        
+        // Remove placeholder if it exists
+        const placeholderIndex = mealPlanData[day].indexOf('(待定)');
+        if (placeholderIndex !== -1) {
+            mealPlanData[day].splice(placeholderIndex, 1);
+        }
+        
+        // Add new dish to meal plan
+        mealPlanData[day].push(dishName);
+        
+        // Check if dish exists in currentDishes, create if it doesn't exist
+        const existingDish = currentDishes.find(d => d.name === dishName);
+        
+        try {
+            if (!existingDish) {
+                // Create new dish if it doesn't exist
+                const response = await fetch('/api/dishes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: dishName,
+                        category: category,
+                        ingredients: ingredients,
+                    }),
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    alert('创建菜品失败: ' + data.error);
+                    return;
+                }
+            } else {
+                // If dish exists, update ingredients if needed
+                const response = await fetch(`/api/dishes/${existingDish.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: dishName,
+                        category: existingDish.category,
+                        ingredients: ingredients,
+                    }),
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    alert('更新菜品失败: ' + data.error);
+                    return;
+                }
+            }
+            
+            // Reload dishes to get updated data
+            await loadDishes();
+            
+            // Close modal
+            manualAddDishModal.style.display = 'none';
+            
+            // Reset form
+            manualAddDishForm.reset();
             
             // Refresh meal plan display
             displayMealPlan(false);

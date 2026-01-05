@@ -43,6 +43,7 @@
                             <button id="edit-plan-btn" class="btn btn-secondary" style="margin-left: 10px;">编辑餐单</button>
                             <button id="save-plan-btn" class="btn btn-primary" style="margin-left: 10px; display: none;">保存餐单</button>
                             <button id="cancel-edit-btn" class="btn btn-secondary" style="margin-left: 10px; display: none;">取消编辑</button>
+                            <button id="manual-add-dish-btn" class="btn btn-secondary" style="margin-left: 10px;">手动添加</button>
                         </div>
                         <div id="meal-plan-display"></div>
                     </div>
@@ -210,6 +211,51 @@
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">保存</button>
                     <button type="button" class="btn btn-secondary" id="cancel-edit-meal-plan-dish-btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manual Add Dish Modal -->
+    <div id="manual-add-dish-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-manual-add-dish">&times;</span>
+            <h2>手动添加菜品</h2>
+            <form id="manual-add-dish-form">
+                <div class="form-group">
+                    <label for="manual-add-dish-day">日期：</label>
+                    <select id="manual-add-dish-day" required>
+                        <option value="周日">周日</option>
+                        <option value="周一">周一</option>
+                        <option value="周二">周二</option>
+                        <option value="周三">周三</option>
+                        <option value="周四">周四</option>
+                        <option value="周五">周五</option>
+                        <option value="周六">周六</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manual-add-dish-name">菜品名称：</label>
+                    <input type="text" id="manual-add-dish-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="manual-add-dish-category">类别：</label>
+                    <select id="manual-add-dish-category" required>
+                        <option value="肉类">肉类</option>
+                        <option value="海鲜">海鲜</option>
+                        <option value="蔬菜">蔬菜</option>
+                        <option value="豆类">豆类</option>
+                        <option value="蛋类">蛋类</option>
+                        <option value="主食">主食</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manual-add-dish-ingredients">食材（用逗号分隔）：</label>
+                    <input type="text" id="manual-add-dish-ingredients" placeholder="鸡肉, 花生" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">添加</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-manual-add-dish-btn">取消</button>
                 </div>
             </form>
         </div>
